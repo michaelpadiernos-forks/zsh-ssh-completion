@@ -26,53 +26,63 @@ _parse_config_file() {
   # Resolve the full path of the input config file
   config_file_path=$(realpath "$input_path" 2>/dev/null) || return 0
 
-  (( _zsh_ssh_parse_depth++ ))
-  if [[ -n "${_zsh_ssh_seen_config_files[$config_file_path]}" ]]; then
-    (( _zsh_ssh_parse_depth-- ))
-    return 0
-  fi
-  _zsh_ssh_seen_config_files[$config_file_path]=1
-
-  # Read the file line by line
-  while IFS= read -r line || [[ -n "$line" ]]; do
-    # Match lines starting with 'Include'
-    if [[ $line =~ ^[[:space:]]*[Ii][Nn][Cc][Ll][Uu][Dd][Ee][[:space:]=]+(.*) ]] && (( $#match > 0 )); then
-      # Split the rest of the line into individual paths
-      include_paths=(${(z)match[1]})
-
-      for raw_path in "${include_paths[@]}"; do
-        # Expand ~ and environment variables in the path
-        expanded="${(e)raw_path}"
-
-        # If path is relative, resolve it relative to the current config file
-        if [[ "$expanded" != /* ]]; then
-          if [[ "$expanded" == ~* ]]; then
-            expanded="${expanded/#\~/$HOME}"
-          else
-            expanded="$(dirname "$config_file_path")/$expanded"
-          fi
-        fi
-
-        # Expand wildcards (e.g. *.conf) and loop over each matched file
-        for include_file_path in $~expanded; do
-          if [[ -f "$include_file_path" ]]; then
-            # Separate includes with a blank line (for readability)
-            echo ""
-            # Recursively parse included files
-            _parse_config_file "$include_file_path"
-          fi
-        done
-      done
-    else
-      # Print normal (non-Include) lines
-      echo "$line"
-    fi
-  done < "$config_file_path"
-
-  (( _zsh_ssh_parse_depth-- ))
-  if (( _zsh_ssh_parse_depth == 0 )); then
+  # If previous parse was interrupted, reset stale global state.
+  if (( _zsh_ssh_parse_depth <= 0 )); then
+    _zsh_ssh_parse_depth=0
     unset _zsh_ssh_seen_config_files
+    typeset -gA _zsh_ssh_seen_config_files
   fi
+
+  (( _zsh_ssh_parse_depth++ ))
+  {
+    if [[ -n "${_zsh_ssh_seen_config_files[$config_file_path]}" ]]; then
+      return 0
+    fi
+    _zsh_ssh_seen_config_files[$config_file_path]=1
+
+    # Read the file line by line
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      # Match lines starting with 'Include'
+      if [[ $line =~ ^[[:space:]]*[Ii][Nn][Cc][Ll][Uu][Dd][Ee][[:space:]=]+(.*) ]] && (( $#match > 0 )); then
+        # Split the rest of the line into individual paths
+        include_paths=(${(z)match[1]})
+
+        for raw_path in "${include_paths[@]}"; do
+          # Expand ~ and environment variables in the path
+          expanded="${(e)raw_path}"
+
+          # If path is relative, resolve it relative to the current config file
+          if [[ "$expanded" != /* ]]; then
+            if [[ "$expanded" == ~* ]]; then
+              expanded="${expanded/#\~/$HOME}"
+            else
+              expanded="$(dirname "$config_file_path")/$expanded"
+            fi
+          fi
+
+          # Expand wildcards (e.g. *.conf) and loop over each matched file
+          for include_file_path in $~expanded; do
+            if [[ -f "$include_file_path" ]]; then
+              # Separate includes with a blank line (for readability)
+              echo ""
+              # Recursively parse included files
+              _parse_config_file "$include_file_path"
+            fi
+          done
+        done
+      else
+        # Print normal (non-Include) lines
+        echo "$line"
+      fi
+    done < "$config_file_path"
+  } always {
+    (( _zsh_ssh_parse_depth-- ))
+    if (( _zsh_ssh_parse_depth <= 0 )); then
+      _zsh_ssh_parse_depth=0
+      unset _zsh_ssh_seen_config_files
+      typeset -gA _zsh_ssh_seen_config_files
+    fi
+  }
 }
 
 _ssh_host_list() {
