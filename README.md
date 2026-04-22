@@ -5,14 +5,14 @@ Better host completion for ssh in Zsh.
 [![asciicast](https://asciinema.org/a/381405.svg)](https://asciinema.org/a/381405)
 
 - [zsh-ssh](#zsh-ssh)
-    - [Installation](#installation)
-        - [Zinit](#zinit)
-        - [Antigen](#antigen)
-        - [Oh My Zsh](#oh-my-zsh)
-        - [Sheldon](#sheldon)
-        - [Manual (Git Clone)](#manual-git-clone)
-    - [Usage](#usage)
-        - [SSH Config Example](#ssh-config-example)
+  - [Installation](#installation)
+    - [Zinit](#zinit)
+    - [Antigen](#antigen)
+    - [Oh My Zsh](#oh-my-zsh)
+    - [Sheldon](#sheldon)
+    - [Manual (Git Clone)](#manual-git-clone)
+  - [Usage](#usage)
+    - [SSH Config Example](#ssh-config-example)
 
 ## Installation
 
@@ -34,15 +34,15 @@ antigen bundle sunlei/zsh-ssh
 
 1. Clone this repository into `$ZSH_CUSTOM/plugins` (by default `~/.oh-my-zsh/custom/plugins`)
 
-    ```shell
-    git clone https://github.com/sunlei/zsh-ssh ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-ssh
-    ```
+   ```shell
+   git clone https://github.com/sunlei/zsh-ssh ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-ssh
+   ```
 
 2. Add the plugin to the list of plugins for Oh My Zsh to load (inside `~/.zshrc`):
 
-    ```shell
-    plugins=(zsh-ssh $plugins)
-    ```
+   ```shell
+   plugins=(zsh-ssh $plugins)
+   ```
 
 3. Start a new terminal session.
 
@@ -50,10 +50,10 @@ antigen bundle sunlei/zsh-ssh
 
 1. Add this config to `~/.config/sheldon/plugins.toml`
 
-    ```toml
-    [plugins.zsh-ssh]
-    github = 'sunlei/zsh-ssh'
-    ```
+   ```toml
+   [plugins.zsh-ssh]
+   github = 'sunlei/zsh-ssh'
+   ```
 
 2. Run `sheldon lock` to install the plugin.
 
@@ -63,15 +63,15 @@ antigen bundle sunlei/zsh-ssh
 
 1. Clone this repository somewhere on your machine. For example: `~/.zsh/zsh-ssh`.
 
-    ```shell
-    git clone https://github.com/sunlei/zsh-ssh ~/.zsh/zsh-ssh
-    ```
+   ```shell
+   git clone https://github.com/sunlei/zsh-ssh ~/.zsh/zsh-ssh
+   ```
 
 2. Add the following to your `.zshrc`:
 
-    ```shell
-    source ~/.zsh/zsh-ssh/zsh-ssh.zsh
-    ```
+   ```shell
+   source ~/.zsh/zsh-ssh/zsh-ssh.zsh
+   ```
 
 3. Start a new terminal session.
 
@@ -94,4 +94,18 @@ Host Development-Host
     Hostname 2.2.2.2
     IdentityFile ~/.ssh/development-host
     #_Desc For Development
+```
+
+Include files are also supported. For example, your main config can include separate files:
+
+~/.ssh/config
+
+```text
+Include ~/.ssh/config.d/company.ssh_config
+Include ~/.ssh/config.d/home.ssh_config
+Include ~/.ssh/config.d/work.ssh_config
+
+# OR
+
+Include ~/.ssh/config.d/*.ssh_config
 ```

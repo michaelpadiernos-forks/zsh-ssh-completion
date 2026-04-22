@@ -9,6 +9,8 @@ setopt no_beep # don't beep
 zstyle ':completion:*:ssh:*' hosts off # disable built-in hosts completion
 
 SSH_CONFIG_FILE="${SSH_CONFIG_FILE:-$HOME/.ssh/config}"
+typeset -gi _zsh_ssh_parse_depth=0
+typeset -gA _zsh_ssh_seen_config_files
 
 # Parse the file and handle the include directive.
 _parse_config_file() {
@@ -16,20 +18,31 @@ _parse_config_file() {
   setopt localoptions rematchpcre
   unsetopt nomatch
 
+  local input_path="$1"
+  local config_file_path
+  local line raw_path expanded include_file_path
+  local -a include_paths
+
   # Resolve the full path of the input config file
-  local config_file_path=$(realpath "$1")
+  config_file_path=$(realpath "$input_path" 2>/dev/null) || return 0
+
+  (( _zsh_ssh_parse_depth++ ))
+  if [[ -n "${_zsh_ssh_seen_config_files[$config_file_path]}" ]]; then
+    (( _zsh_ssh_parse_depth-- ))
+    return 0
+  fi
+  _zsh_ssh_seen_config_files[$config_file_path]=1
 
   # Read the file line by line
   while IFS= read -r line || [[ -n "$line" ]]; do
     # Match lines starting with 'Include'
-    if [[ $line =~ ^[Ii]nclude[[:space:]=]+(.*) ]] && (( $#match > 0 )); then
+    if [[ $line =~ ^[[:space:]]*[Ii][Nn][Cc][Ll][Uu][Dd][Ee][[:space:]=]+(.*) ]] && (( $#match > 0 )); then
       # Split the rest of the line into individual paths
-      local include_paths=(${(z)match[1]})
+      include_paths=(${(z)match[1]})
 
       for raw_path in "${include_paths[@]}"; do
         # Expand ~ and environment variables in the path
-        eval "local expanded=\${(e)raw_path}"
-        # local expanded="${raw_path/#~/$HOME}"
+        expanded="${(e)raw_path}"
 
         # If path is relative, resolve it relative to the current config file
         if [[ "$expanded" != /* ]]; then
@@ -55,17 +68,22 @@ _parse_config_file() {
       echo "$line"
     fi
   done < "$config_file_path"
+
+  (( _zsh_ssh_parse_depth-- ))
+  if (( _zsh_ssh_parse_depth == 0 )); then
+    unset _zsh_ssh_seen_config_files
+  fi
 }
 
 _ssh_host_list() {
   local ssh_config host_list
 
-  ssh_config=$(_parse_config_file $SSH_CONFIG_FILE)
-  ssh_config=$(echo $ssh_config | command grep -v -E "^\s*#[^_]")
+  ssh_config=$(_parse_config_file "$SSH_CONFIG_FILE")
+  ssh_config=$(printf "%s\n" "$ssh_config" | command grep -v -E "^\s*#[^_]")
   # Ensure blank line before each Host/Match block for AWK paragraph mode (RS="")
-  ssh_config=$(echo $ssh_config | command awk '/^[[:space:]]*[Hh]ost[[:space:]]|^[[:space:]]*[Mm]atch[[:space:]]/{print ""} {print}')
+  ssh_config=$(printf "%s\n" "$ssh_config" | command awk '/^[[:space:]]*[Hh]ost[[:space:]]|^[[:space:]]*[Mm]atch[[:space:]]/{print ""} {print}')
 
-  host_list=$(echo $ssh_config | command awk '
+  host_list=$(printf "%s\n" "$ssh_config" | command awk '
     function join(array, start, end, sep, result, i) {
       # https://www.gnu.org/software/gawk/manual/html_node/Join-Function.html
       if (sep == "")
@@ -183,7 +201,7 @@ _ssh_host_list() {
   fi
   host_list=$(printf "%s\n" "$host_list" | command sort -u)
 
-  echo $host_list
+  printf "%s\n" "$host_list"
 }
 
 
@@ -203,7 +221,7 @@ Alias|->|Hostname|User|Desc
 
   host_list="${header}\n${host_list}"
 
-  echo $host_list | command column -t -s '|'
+  printf "%s\n" "$host_list" | command column -t -s '|'
 }
 
 _set_lbuffer() {
