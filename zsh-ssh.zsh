@@ -51,17 +51,18 @@ _parse_config_file() {
           # Expand ~ and environment variables in the path
           expanded="${(e)raw_path}"
 
+          # Expand a literal leading ~ before testing whether the path is relative.
+          if [[ $expanded == '~'* ]]; then
+            expanded="${expanded/#\~/$HOME}"
+          fi
+
           # If path is relative, resolve it relative to the current config file
           if [[ "$expanded" != /* ]]; then
-            if [[ "$expanded" == ~* ]]; then
-              expanded="${expanded/#\~/$HOME}"
-            else
-              expanded="$(dirname "$config_file_path")/$expanded"
-            fi
+            expanded="$(dirname "$config_file_path")/$expanded"
           fi
 
           # Expand wildcards (e.g. *.conf) and loop over each matched file
-          for include_file_path in $~expanded; do
+          for include_file_path in ${~expanded}(N); do
             if [[ -f "$include_file_path" ]]; then
               # Separate includes with a blank line (for readability)
               echo ""
