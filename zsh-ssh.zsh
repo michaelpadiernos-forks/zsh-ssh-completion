@@ -219,7 +219,7 @@ Alias|->|Hostname|User|Desc
 ─────|──|────────|────|────
 "
 
-  host_list="${header}\n${host_list}"
+  host_list="${header}"$'\n'"${host_list}"
 
   printf "%s\n" "$host_list" | command column -t -s '|'
 }
