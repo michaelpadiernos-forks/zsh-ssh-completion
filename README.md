@@ -12,6 +12,7 @@ Better host completion for ssh in Zsh.
         - [Sheldon](#sheldon)
         - [Manual (Git Clone)](#manual-git-clone)
     - [Usage](#usage)
+        - [Configuration](#configuration)
         - [SSH Config Example](#ssh-config-example)
 
 ## Installation
@@ -79,6 +80,22 @@ antigen bundle sunlei/zsh-ssh
 ## Usage
 
 Just press <kbd>Tab</kbd> after `ssh` command as usual.
+
+### Configuration
+
+Known hosts are not included by default. To include plain hostnames from `~/.ssh/known_hosts`, enable it explicitly:
+
+```shell
+export ZSH_SSH_INCLUDE_KNOWN_HOSTS=1
+```
+
+By default, the plugin reads `$HOME/.ssh/known_hosts`. To use another file:
+
+```shell
+export ZSH_SSH_KNOWN_HOSTS_FILE="$HOME/.ssh/known_hosts"
+```
+
+Hashed `known_hosts` entries cannot be converted back to hostnames and are skipped.
 
 ### SSH Config Example
 

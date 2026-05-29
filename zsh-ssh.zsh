@@ -99,6 +99,40 @@ _parse_config_file() {
   }
 }
 
+_ssh_known_hosts_list() {
+  local known_hosts_file="${ZSH_SSH_KNOWN_HOSTS_FILE:-$HOME/.ssh/known_hosts}"
+
+  [[ -f "$known_hosts_file" ]] || return 0
+
+  command awk '
+    function emit_host(host) {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", host)
+
+      if (!host || host ~ /^\|1\|/ || host ~ /[*?!]/) {
+        return
+      }
+
+      if (host ~ /^\[[^]]+\]:[0-9]+$/) {
+        host = substr(host, 2, index(host, "]") - 2)
+      }
+
+      if (host) {
+        printf "%s|->|%s| |[\033[00;34mknown_hosts\033[0m]\n", host, host
+      }
+    }
+
+    /^[[:space:]]*$/ || /^[[:space:]]*#/ { next }
+    $1 ~ /^@/ { next }
+
+    {
+      split($1, hosts, ",")
+      for (i in hosts) {
+        emit_host(hosts[i])
+      }
+    }
+  ' "$known_hosts_file"
+}
+
 _ssh_host_list() {
   local ssh_config host_list
 
@@ -212,6 +246,10 @@ _ssh_host_list() {
       }
     }
   ')
+
+  if [[ "$ZSH_SSH_INCLUDE_KNOWN_HOSTS" == "1" ]]; then
+    host_list="${host_list}"$'\n'"$(_ssh_known_hosts_list)"
+  fi
 
   for arg in "$@"; do
     case $arg in
