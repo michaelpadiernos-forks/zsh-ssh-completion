@@ -15,7 +15,8 @@ typeset -gA _zsh_ssh_seen_config_files
 # Parse the file and handle the include directive.
 _parse_config_file() {
   # Include expansion uses the (N) glob qualifier, so enable its option locally.
-  setopt localoptions rematchpcre bareglobqual
+  setopt localoptions bareglobqual
+  unsetopt rematchpcre
   unsetopt nomatch
 
   local input_path="$1"
