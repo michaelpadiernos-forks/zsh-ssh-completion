@@ -117,7 +117,7 @@ _ssh_known_hosts_list() {
       }
 
       if (host) {
-        printf "%s|->|%s| |[\033[00;34mknown_hosts\033[0m]\n", host, host
+        printf "%s|->|%s| | |[\033[00;34mknown_hosts\033[0m]\n", host, host
       }
     }
 
@@ -134,7 +134,7 @@ _ssh_known_hosts_list() {
 }
 
 _ssh_host_list() {
-  local ssh_config host_list
+  local ssh_config host_list tag_query
 
   ssh_config=$(_parse_config_file "$SSH_CONFIG_FILE")
   ssh_config=$(printf "%s\n" "$ssh_config" | command grep -v -E "^\s*#[^_]")
@@ -181,12 +181,15 @@ _ssh_host_list() {
 
       # Use spaces to ensure the column command maintains the correct number of columns.
       #   - user
+      #   - tag_formated
       #   - desc_formated
 
       user = " "
       host_name = ""
       alias = ""
       aliases = ""
+      tag = ""
+      tag_formated = " "
       desc = ""
       desc_formated = " "
 
@@ -203,7 +206,12 @@ _ssh_host_list() {
         if (key == "host") { aliases = value }
         if (key == "user") { user = value }
         if (key == "hostname") { host_name = value }
+        if (key == "tag" && !tag) { tag = value }
         if (key == "#_desc") { desc = value }
+      }
+
+      if (tag) {
+        tag_formated = sprintf("[\033[00;36m%s\033[0m]", tag)
       }
 
       if (desc) {
@@ -224,6 +232,7 @@ _ssh_host_list() {
         if (!(alias in alias_hn)) {
           alias_hn[alias] = effective_hostname
           alias_user[alias] = user
+          alias_tag[alias] = tag_formated
           alias_desc[alias] = desc_formated
           if (host_name) alias_explicit_hn[alias] = 1
         } else {
@@ -234,6 +243,9 @@ _ssh_host_list() {
           if (user != " " && alias_user[alias] == " ") {
             alias_user[alias] = user
           }
+          if (tag_formated != " " && alias_tag[alias] == " ") {
+            alias_tag[alias] = tag_formated
+          }
           if (desc_formated != " " && alias_desc[alias] == " ") {
             alias_desc[alias] = desc_formated
           }
@@ -242,7 +254,7 @@ _ssh_host_list() {
     }
     END {
       for (a in alias_hn) {
-        printf "%s|->|%s|%s|%s\n", a, alias_hn[a], alias_user[a], alias_desc[a]
+        printf "%s|->|%s|%s|%s|%s\n", a, alias_hn[a], alias_user[a], alias_tag[a], alias_desc[a]
       }
     }
   ')
@@ -258,7 +270,19 @@ _ssh_host_list() {
     esac
   done
 
-  if [[ -n "$1" ]]; then
+  if [[ "$1" == tag:* ]]; then
+    tag_query="${1#tag:}"
+    host_list=$(command awk -F '|' -v q="$tag_query" '
+      function plain_tag(value) {
+        gsub(/\033\[[0-9;]*m/, "", value)
+        gsub(/^\[|\]$/, "", value)
+        return value
+      }
+
+      BEGIN { q = tolower(q) }
+      NF >= 6 && (q == "" || index(tolower(plain_tag($5)), q) > 0)
+    ' <<< "$host_list")
+  elif [[ -n "$1" ]]; then
     host_list=$(command grep -i "$1" <<< "$host_list")
   fi
   host_list=$(printf "%s\n" "$host_list" | command sort -u)
@@ -295,10 +319,22 @@ _fzf_list_generator() {
     host_list=$(_ssh_host_list)
   fi
 
-  header="
+  if printf "%s\n" "$host_list" | command awk -F '|' 'NF >= 6 && $5 !~ /^[[:space:]]*$/ { found = 1 } END { exit !found }'; then
+    header="
+Alias|->|Hostname|User|Tag|Desc
+─────|──|────────|────|───|────
+"
+  else
+    host_list=$(printf "%s\n" "$host_list" | command awk -F '|' '
+      BEGIN { OFS = "|" }
+      NF >= 6 { print $1, $2, $3, $4, $6; next }
+      { print }
+    ')
+    header="
 Alias|->|Hostname|User|Desc
 ─────|──|────────|────|────
 "
+  fi
 
   host_list="${header}"$'\n'"${host_list}"
 
@@ -321,7 +357,7 @@ _set_lbuffer() {
 }
 
 fzf_complete_ssh() {
-  local tokens cmd result key selection
+  local tokens cmd result key selection fuzzy_input
   setopt localoptions noshwordsplit noksh_arrays noposixbuiltins
 
   tokens=(${(z)LBUFFER})
@@ -332,6 +368,9 @@ fzf_complete_ssh() {
   elif [[ "$cmd" == "ssh" ]]; then
     result=$(_ssh_host_list ${tokens[2, -1]})
     fuzzy_input="${LBUFFER#"$tokens[1] "}"
+    if [[ "$fuzzy_input" == tag:* ]]; then
+      fuzzy_input="${fuzzy_input#tag:}"
+    fi
 
     if [ -z "$result" ]; then
       # When host parameters exist, don't fall back to default completion to avoid slow hosts enumeration

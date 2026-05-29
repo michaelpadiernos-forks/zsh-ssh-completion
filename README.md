@@ -114,6 +114,26 @@ Host Development-Host
     #_Desc For Development
 ```
 
+You can use OpenSSH `Tag` to group hosts in the list:
+
+```text
+Host Work-Bastion
+    Hostname bastion.example.com
+    User deploy
+    Tag work
+    #_Desc Bastion host
+
+Host Home-NAS
+    Hostname 192.168.1.20
+    User root
+    Tag personal
+    #_Desc NAS
+```
+
+When any host has a `Tag`, zsh-ssh shows a `Tag` column. You can type `work`
+in fzf to search for tagged hosts, or use `ssh tag:work<Tab>` to filter the
+completion list by tag before fzf opens.
+
 Include files are also supported. For example, your main config can include separate files:
 
 ~/.ssh/config
