@@ -217,6 +217,25 @@ _ssh_host_list() {
 }
 
 
+_zsh_ssh_columnize() {
+  if command -v column >/dev/null 2>&1; then
+    command column -t -s '|'
+    return
+  fi
+
+  command awk -F '|' '{
+    for (i = 1; i <= NF; i++) {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", $i)
+    }
+
+    output = $1
+    for (i = 2; i <= NF; i++) {
+      output = output "  " $i
+    }
+    print output
+  }'
+}
+
 _fzf_list_generator() {
   local header host_list
 
@@ -233,7 +252,7 @@ Alias|->|Hostname|User|Desc
 
   host_list="${header}"$'\n'"${host_list}"
 
-  printf "%s\n" "$host_list" | command column -t -s '|'
+  printf "%s\n" "$host_list" | _zsh_ssh_columnize
 }
 
 _set_lbuffer() {
@@ -290,7 +309,7 @@ fzf_complete_ssh() {
       --prompt='SSH Remote > ' \
       --query=$fuzzy_input \
       --bind 'shift-tab:up,tab:down,bspace:backward-delete-char/eof' \
-      --preview 'ssh -T -G $(cut -f 1 -d " " <<< {}) | grep -i -E "^User |^HostName |^Port |^ControlMaster |^ForwardAgent |^LocalForward |^IdentityFile |^RemoteForward |^ProxyCommand |^ProxyJump " | column -t' \
+      --preview 'ssh -T -G $(cut -f 1 -d " " <<< {}) | grep -i -E "^User |^HostName |^Port |^ControlMaster |^ForwardAgent |^LocalForward |^IdentityFile |^RemoteForward |^ProxyCommand |^ProxyJump " | (command -v column >/dev/null 2>&1 && column -t || cat)' \
       --preview-window=right:40% \
       --expect=alt-enter,enter
     )

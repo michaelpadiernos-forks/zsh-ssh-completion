@@ -17,6 +17,7 @@ Better host completion for ssh in Zsh.
 ## Installation
 
 Make sure you have [fzf](https://github.com/junegunn/fzf) installed.
+The `column` command is optional and only improves table/preview alignment; the plugin falls back to plain formatting when it is unavailable.
 
 ### Zinit
 
