@@ -20,12 +20,24 @@ _parse_config_file() {
   unsetopt nomatch
 
   local input_path="$1"
-  local config_file_path
+  local logical_config_path config_file_path include_base_dir
   local line raw_path expanded include_file_path
   local -a include_paths
 
+  # Keep the caller-visible path for relative Includes so symlinked configs
+  # resolve sibling includes from the link location, while realpath is used
+  # below for reading and cycle detection.
+  logical_config_path="$input_path"
+  if [[ $logical_config_path == '~'* ]]; then
+    logical_config_path="${logical_config_path/#\~/$HOME}"
+  fi
+  if [[ "$logical_config_path" != /* ]]; then
+    logical_config_path="$PWD/$logical_config_path"
+  fi
+  include_base_dir="$(dirname "$logical_config_path")"
+
   # Resolve the full path of the input config file
-  config_file_path=$(realpath "$input_path" 2>/dev/null) || return 0
+  config_file_path=$(realpath "$logical_config_path" 2>/dev/null) || return 0
 
   # If previous parse was interrupted, reset stale global state.
   if (( _zsh_ssh_parse_depth <= 0 )); then
@@ -57,9 +69,9 @@ _parse_config_file() {
             expanded="${expanded/#\~/$HOME}"
           fi
 
-          # If path is relative, resolve it relative to the current config file
+          # Relative Include paths follow the logical config directory, not the realpath target.
           if [[ "$expanded" != /* ]]; then
-            expanded="$(dirname "$config_file_path")/$expanded"
+            expanded="$include_base_dir/$expanded"
           fi
 
           # Expand wildcards (e.g. *.conf) and loop over each matched file
