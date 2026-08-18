@@ -12,11 +12,13 @@ Better host completion for ssh in Zsh.
         - [Sheldon](#sheldon)
         - [Manual (Git Clone)](#manual-git-clone)
     - [Usage](#usage)
+        - [Configuration](#configuration)
         - [SSH Config Example](#ssh-config-example)
 
 ## Installation
 
 Make sure you have [fzf](https://github.com/junegunn/fzf) installed.
+The `column` command is optional and only improves table/preview alignment; the plugin falls back to plain formatting when it is unavailable.
 
 ### Zinit
 
@@ -79,6 +81,22 @@ antigen bundle sunlei/zsh-ssh
 
 Just press <kbd>Tab</kbd> after `ssh` command as usual.
 
+### Configuration
+
+Known hosts are not included by default. To include plain hostnames from `~/.ssh/known_hosts`, enable it explicitly:
+
+```shell
+export ZSH_SSH_INCLUDE_KNOWN_HOSTS=1
+```
+
+By default, the plugin reads `$HOME/.ssh/known_hosts`. To use another file:
+
+```shell
+export ZSH_SSH_KNOWN_HOSTS_FILE="$HOME/.ssh/known_hosts"
+```
+
+Hashed `known_hosts` entries cannot be converted back to hostnames and are skipped.
+
 ### SSH Config Example
 
 You can use `#_Desc` to set description.
@@ -94,4 +112,38 @@ Host Development-Host
     Hostname 2.2.2.2
     IdentityFile ~/.ssh/development-host
     #_Desc For Development
+```
+
+You can use OpenSSH `Tag` to group hosts in the list:
+
+```text
+Host Work-Bastion
+    Hostname bastion.example.com
+    User deploy
+    Tag work
+    #_Desc Bastion host
+
+Host Home-NAS
+    Hostname 192.168.1.20
+    User root
+    Tag personal
+    #_Desc NAS
+```
+
+When any host has a `Tag`, zsh-ssh shows a `Tag` column. You can type `work`
+in fzf to search for tagged hosts, or use `ssh tag:work<Tab>` to filter the
+completion list by tag before fzf opens.
+
+Include files are also supported. For example, your main config can include separate files:
+
+~/.ssh/config
+
+```text
+Include ~/.ssh/config.d/company.ssh_config
+Include ~/.ssh/config.d/home.ssh_config
+Include ~/.ssh/config.d/work.ssh_config
+
+# OR
+
+Include ~/.ssh/config.d/*.ssh_config
 ```
